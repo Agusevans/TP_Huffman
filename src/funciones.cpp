@@ -10,10 +10,10 @@
 #include "../librerias/tads/BitWriter.hpp"
 #include <cstring>
 
-struct HuffmanTable
+struct HuffmanTable // Guarda el codigo y cuantas veces esta un caracter en un archivo
 {
-  unsigned int n;
-  string cod;
+  unsigned int contadorOcurrecias;
+  string codigo;
 };
 
 struct Ocurrencias
@@ -22,7 +22,7 @@ struct Ocurrencias
   unsigned int cantT; // cantidad total de caracteres del archivo a comprir
 };
 
-void inicializarTabla(HuffmanTable tabla[])
+void inicializarTabla(HuffmanTable tabla[]) // inicio el contador de cada caracter en 0
 {
   for (int i = 0; i < 256; i++)
   {
@@ -30,21 +30,21 @@ void inicializarTabla(HuffmanTable tabla[])
   }
 }
 
-void contarOcurrencias(string fName, HuffmanTable tabla[])
+void contarOcurrencias(string pathArchivo, HuffmanTable tabla[])
 {
   cout << "Contando ocurrencias" << endl;
 
-  FILE *f = fopen(fName.c_str(), "r+b");
-  inicializarTabla(tabla); // inicio el contador de cada caracter en 0
+  FILE *archivo = fopen(pathArchivo.c_str(), "r+b");
+  inicializarTabla(tabla);
 
-  int c = read<unsigned char>(f);
-  while (!feof(f))
+  int caracterLeido = read<unsigned char>(archivo); // TODO: Check
+  while (!feof(archivo))
   {
-    tabla[c].n++;
-    c = read<unsigned char>(f);
+    tabla[caracterLeido].contadorOcurrecias++;
+    caracterLeido = read<unsigned char>(archivo);
   }
 
-  fclose(f);
+  fclose(archivo);
 }
 
 int cmpInfo(HuffmanTreeInfo a, HuffmanTreeInfo b)
@@ -64,12 +64,12 @@ void crearLista(List<HuffmanTreeInfo> &lista, HuffmanTable tabla[])
 
   for (int i = 0; i < 256; i++)
   {
-    unsigned int cont = tabla[i].n; // ocurrencias de cada caracter
-    if (cont > 0)                   // si el caracter estaba en el archivo
+    unsigned int contador = tabla[i].contadorOcurrecias; // ocurrencias de cada caracter
+    if (contador > 0)                                    // si el caracter estaba en el archivo
     {
       unsigned char c = i;
-      HuffmanTreeInfo n = {c, cont, NULL, NULL};
-      listOrderedInsert<HuffmanTreeInfo>(lista, n, cmpInfo);
+      HuffmanTreeInfo nodo = {c, contador, NULL, NULL}; // TODO: Check
+      listOrderedInsert<HuffmanTreeInfo>(lista, nodo, cmpInfo);
     }
   }
 }
@@ -81,7 +81,7 @@ HuffmanTreeInfo *crearArbol(List<HuffmanTreeInfo> &lista)
   int i = 256;
 
   HuffmanTreeInfo a = listRemoveFirst<HuffmanTreeInfo>(lista);
-  while (listSize<HuffmanTreeInfo>(lista) > 0) // mientras tenga elementos en la lista
+  while (listSize<HuffmanTreeInfo>(lista) > 0)
   {
     HuffmanTreeInfo b = listRemoveFirst<HuffmanTreeInfo>(lista);
 
@@ -94,9 +94,9 @@ HuffmanTreeInfo *crearArbol(List<HuffmanTreeInfo> &lista)
     i++;
     a = listRemoveFirst<HuffmanTreeInfo>(lista);
   }
-  HuffmanTreeInfo *ret = huffmanTreeInfo(a.c, a.n, a.left, a.right);
+  HuffmanTreeInfo *raiz = huffmanTreeInfo(a.c, a.n, a.left, a.right);
 
-  return ret;
+  return raiz;
 }
 
 void cargarCodigosEnTabla(HuffmanTreeInfo *raiz, HuffmanTable tabla[])
@@ -109,7 +109,7 @@ void cargarCodigosEnTabla(HuffmanTreeInfo *raiz, HuffmanTable tabla[])
   while (huffmanTreeHasNext(ht))
   {
     HuffmanTreeInfo *x = huffmanTreeNext(ht, cod);
-    tabla[x->c].cod = cod;
+    tabla[x->c].codigo = cod;
     /*cout << (char)x->c << ", (" << tabla[x->c].n << "), "
          << "[" << tabla[x->c].cod << "]" << endl;*/
   }
@@ -120,10 +120,10 @@ Ocurrencias cantOcurrencias(HuffmanTable tabla[])
   Ocurrencias o = {-1, 0};
   for (int i = 0; i < 256; i++)
   {
-    if (tabla[i].n > 0)
+    if (tabla[i].contadorOcurrecias > 0)
     {
       o.cantH++;
-      o.cantT += tabla[i].n;
+      o.cantT += tabla[i].contadorOcurrecias;
     }
   }
   return o;
@@ -133,96 +133,72 @@ string nombreDelArchivo(string path)
 {
   int index = lastIndexOf(path, '/');
   string nombre;
-  if(index > -1)
+  if (index > -1)
     nombre = substring(path, index + 1);
   else
     nombre = path;
-  
+
   return nombre;
 }
 
-FILE* abrirArchivo(string fName, string extension)
+FILE *abrirArchivo(string pathArchivo, string extension)
 {
-  string nombre = nombreDelArchivo(fName) + extension;
+  string nombre = nombreDelArchivo(pathArchivo) + extension;
 
-  return fopen( ("salida/" + nombre).c_str(), "w+b");
-} 
+  return fopen(("salida/" + nombre).c_str(), "w+b");
+}
 
-void grabarArchivoComprimido(string fName, HuffmanTable tabla[])
+void grabarArchivoComprimido(string pathArchivo, HuffmanTable tabla[])
 {
   cout << "Grabando archivo" << endl;
 
-  FILE *f = abrirArchivo(fName, ".huf");
+  FILE *archivoComprimido = abrirArchivo(pathArchivo, ".huf");
 
   Ocurrencias o = cantOcurrencias(tabla);
   // cout<<"Hojas: "<<o.cantH+1<<", Cant bytes: "<<o.cantT<<endl; //prueba
 
-  write<unsigned char>(f, o.cantH); // Escribo cant hojas, CHEQUEAR!!
+  write<unsigned char>(archivoComprimido, o.cantH); // Escribo cant hojas// TODO:CHEQUEAR
 
   for (int j = 0; j < 256; j++)
   {
-    if (tabla[j].n > 0) // Escribo registros x cada hoja
+    if (tabla[j].contadorOcurrecias > 0) // Escribo registros x cada hoja
     {
-      write<unsigned char>(f, (unsigned char)j);
+      write<unsigned char>(archivoComprimido, (unsigned char)j);
 
-      string cod = tabla[j].cod;
+      string cod = tabla[j].codigo;
       unsigned int longCod = length(cod);
-      write<unsigned char>(f, longCod);
+      write<unsigned char>(archivoComprimido, longCod);
 
       for (unsigned int i = 0; i < longCod; i++)
       {
-        write<unsigned char>(f, (unsigned char)cod[i]);
+        write<unsigned char>(archivoComprimido, (unsigned char)cod[i]);
       }
     }
   }
 
-  write<unsigned int>(f, o.cantT); // Escribo cant bytes
+  write<unsigned int>(archivoComprimido, o.cantT); // Escribo cant bytes
 
   // Reabro el archivo original para escribir
-  FILE *g = fopen(fName.c_str(), "r+b");
+  FILE *archivoOriginal = fopen(pathArchivo.c_str(), "r+b");
 
-  BitWriter b = bitWriter(f);
-  int c = read<unsigned char>(g);
-  while (!feof(g))
+  BitWriter b = bitWriter(archivoComprimido);
+  int c = read<unsigned char>(archivoOriginal);
+  while (!feof(archivoOriginal))
   {
-    string cod = tabla[c].cod;
+    string cod = tabla[c].codigo;
     for (int j = 0; j < length(cod); j++)
     {
       int bit = charToInt((unsigned char)cod[j]);
       bitWriterWrite(b, bit); // Escribo los codigos bit x bit
     }
-    c = read<unsigned char>(g);
+    c = read<unsigned char>(archivoOriginal);
   }
   bitWriterFlush(b);
 
-  fclose(g);
-  fclose(f);
+  fclose(archivoOriginal);
+  fclose(archivoComprimido);
 
   cout << "Compresion FINALIZADA" << endl;
-}
-
-void comprimir(string fName)
-{
-  cout << "Iniciando compresion:" << endl;
-
-  // tabla de contadores
-  HuffmanTable tabla[256];
-
-  // paso 1
-  contarOcurrencias(fName, tabla);
-
-  // paso 2
-  List<HuffmanTreeInfo> lista = list<HuffmanTreeInfo>();
-  crearLista(lista, tabla);
-
-  // paso 3
-  HuffmanTreeInfo *raiz = crearArbol(lista);
-
-  // paso adicional
-  cargarCodigosEnTabla(raiz, tabla);
-
-  // grabar
-  grabarArchivoComprimido(fName, tabla);
 }
 
 HuffmanTreeInfo *crearRama(string cod, HuffmanTreeInfo *raiz, unsigned char c)
@@ -261,7 +237,7 @@ HuffmanTreeInfo *recomponerArbol(FILE *archivo)
 {
   cout << "Recomponiendo arbol" << endl;
 
-  HuffmanTreeInfo *raiz = NULL; 
+  HuffmanTreeInfo *raiz = NULL;
   unsigned int cantHojas = read<unsigned char>(archivo) + 1;
 
   for (unsigned int i = 0; i < cantHojas; i++) // mientras no lea todos los caracteres
@@ -282,17 +258,17 @@ HuffmanTreeInfo *recomponerArbol(FILE *archivo)
   return raiz;
 }
 
-void reescribirArchivo(HuffmanTreeInfo *raiz, string fName, FILE *g)
+void reescribirArchivo(HuffmanTreeInfo *raiz, string pathArchivo, FILE *archivoComprimido)
 {
   cout << "Reescribiendo archivo descomprimido" << endl;
 
-  int longFName = length(fName);
-  string archOrig = substring(fName, 0, longFName - 4); // nombre del archivo descomprimido
-  FILE *f = abrirArchivo(archOrig, "");             // Genero el archivo descomprimido
+  int longPath = length(pathArchivo);
+  string pathArchivoOrig = substring(pathArchivo, 0, longPath - 4); // le saco el .huf al path
+  FILE *archivoOriginal = abrirArchivo(pathArchivoOrig, "");        // Genero el archivo descomprimido
 
-  unsigned int longArchivoOriginal = read<unsigned int>(g);
+  unsigned int longArchivoOriginal = read<unsigned int>(archivoComprimido);
 
-  BitReader br = bitReader(g);
+  BitReader br = bitReader(archivoComprimido);
   for (unsigned int i = 0; i < longArchivoOriginal; i++) // leo con bitreader
   {
     HuffmanTreeInfo *aux = raiz;
@@ -309,25 +285,50 @@ void reescribirArchivo(HuffmanTreeInfo *raiz, string fName, FILE *g)
         aux = aux->right;
       }
     }
-    write<unsigned char>(f, aux->c); // finalmente, aux estara en la hoja entonces escribo el caracter
-                                     // cout<<"Caracter reescrito: "<<aux->c<<endl;
+    write<unsigned char>(archivoOriginal, aux->c); // finalmente, aux estara en la hoja entonces escribo el caracter
+    // cout<<"Caracter reescrito: "<<aux->c<<endl;
   }
-  fclose(f);
+
+  fclose(archivoOriginal);
 }
 
-void descomprimir(string archivoHuf)
+void descomprimir(string pathArchivo)
 {
   cout << "Iniciando descompresion:" << endl;
 
-  FILE *archivoComprimido = fopen(archivoHuf.c_str(), "r+b");
+  FILE *archivoComprimido = fopen(pathArchivo.c_str(), "r+b");
 
   HuffmanTreeInfo *raiz = recomponerArbol(archivoComprimido);
 
-  reescribirArchivo(raiz, archivoHuf, archivoComprimido);
+  reescribirArchivo(raiz, pathArchivo, archivoComprimido);
 
   fclose(archivoComprimido);
 
   cout << "Descompresion Finalizada" << endl;
+}
+
+void comprimir(string pathArchivo)
+{
+  cout << "Iniciando compresion:" << endl;
+
+  // tabla de contadores
+  HuffmanTable tabla[256];
+
+  // paso 1
+  contarOcurrencias(pathArchivo, tabla);
+
+  // paso 2
+  List<HuffmanTreeInfo> lista = list<HuffmanTreeInfo>();
+  crearLista(lista, tabla);
+
+  // paso 3
+  HuffmanTreeInfo *raiz = crearArbol(lista);
+
+  // paso adicional
+  cargarCodigosEnTabla(raiz, tabla);
+
+  // grabar
+  grabarArchivoComprimido(pathArchivo, tabla);
 }
 
 #endif
