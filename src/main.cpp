@@ -1,7 +1,7 @@
 #ifndef _MAIN
 #define _MAIN
 
-#include "funciones.h"
+#include "funciones.cpp"
 
 using namespace std;
 

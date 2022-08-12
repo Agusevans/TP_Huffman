@@ -1,26 +1,7 @@
-#ifndef _MAIN_H
-#define _MAIN_H
+#ifndef _FUNCIONES
+#define _FUNCIONES
 
-#include <iostream>
-#include "../librerias/funciones/files.hpp"
-#include "../librerias/funciones/strings.hpp"
-#include "../librerias/tads/HuffmanTree.hpp"
-#include "../librerias/tads/List.hpp"
-#include "../librerias/tads/BitReader.hpp"
-#include "../librerias/tads/BitWriter.hpp"
-#include <cstring>
-
-struct HuffmanTable // Guarda el codigo y cuantas veces esta un caracter en un archivo
-{
-  unsigned int contadorOcurrecias;
-  string codigo;
-};
-
-struct Ocurrencias
-{
-  int cantH;          // cantidad total de hojas
-  unsigned int cantT; // cantidad total de caracteres del archivo a comprir
-};
+#include "funciones.hpp"
 
 void inicializarTabla(HuffmanTable tabla[]) // inicio el contador de cada caracter en 0
 {
@@ -37,7 +18,7 @@ void contarOcurrencias(string pathArchivo, HuffmanTable tabla[])
   FILE *archivo = fopen(pathArchivo.c_str(), "r+b");
   inicializarTabla(tabla);
 
-  int caracterLeido = read<unsigned char>(archivo); // TODO: Check
+  int caracterLeido = read<unsigned char>(archivo); 
   while (!feof(archivo))
   {
     tabla[caracterLeido].contadorOcurrecias++;
@@ -68,7 +49,7 @@ void crearLista(List<HuffmanTreeInfo> &lista, HuffmanTable tabla[])
     if (contador > 0)                                    // si el caracter estaba en el archivo
     {
       unsigned char c = i;
-      HuffmanTreeInfo nodo = {c, contador, NULL, NULL}; // TODO: Check
+      HuffmanTreeInfo nodo = {c, contador, NULL, NULL}; 
       listOrderedInsert<HuffmanTreeInfo>(lista, nodo, cmpInfo);
     }
   }
@@ -157,7 +138,7 @@ void grabarArchivoComprimido(string pathArchivo, HuffmanTable tabla[])
   Ocurrencias o = cantOcurrencias(tabla);
   // cout<<"Hojas: "<<o.cantH+1<<", Cant bytes: "<<o.cantT<<endl; //prueba
 
-  write<unsigned char>(archivoComprimido, o.cantH); // Escribo cant hojas// TODO:CHEQUEAR
+  write<unsigned char>(archivoComprimido, o.cantH); // Escribo cant hojas
 
   for (int j = 0; j < 256; j++)
   {
