@@ -126,7 +126,7 @@ FILE *abrirArchivo(string pathArchivo, string extension)
 {
   string nombre = nombreDelArchivo(pathArchivo) + extension;
 
-  return fopen(("salida/" + nombre).c_str(), "w+b");
+  return fopen(("../salida/" + nombre).c_str(), "w+b");
 }
 
 void grabarArchivoComprimido(string pathArchivo, HuffmanTable tabla[])
